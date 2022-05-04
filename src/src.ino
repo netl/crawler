@@ -2,6 +2,7 @@
 #include <string.h>
 
 Servo accelerator;
+Servo steering;
 void setup() {
     Serial.begin(115200);
     while(!Serial);
@@ -22,37 +23,27 @@ void loop() {
         command[commandCounter] = message;
         commandCounter ++;
 
-        if(message == 0xD || commandCounter == 10){
-            //set last character to null byte
-            command[commandCounter] = 0;
+        if(message != '\r' && commandCounter < 10)
+            continue;
 
-            //parse command and value
-            String parsedCommand = strtok(command, " ");
-            int parsedValue = atoi(strtok(NULL, " "));
+        //set last character to null byte
+        command[commandCounter] = 0;
 
-            //try to handle command
-            if(parsedCommand != NULL){
-                //echo succesfull command
-                Serial.print(parsedCommand);
-                Serial.print(":");
-                Serial.println(parsedValue);
+        //parse command and value
+        String parsedCommand = strtok(command, " ");
+        int parsedValue = atoi(strtok(NULL, " "));
 
-                //just check for velocity and set it for now
-                if(parsedCommand == "spd")
-                    accelerator.write(parsedValue);
+        //echo processed command
+        Serial.print(parsedCommand);
+        Serial.print(":");
+        Serial.println(parsedValue);
 
-            //failed command
-            }else{
-                //return command as hex for readability over serial port
-                Serial.print("bad command :");
-                for (int n = 0 ; n < 11; n++)
-                    Serial.print(command[n], HEX);
-                Serial.println();
-            }
+        //just check for velocity and set it for now
+        if(parsedCommand == "spd")
+            accelerator.write(parsedValue);
 
-            //clear command buffer and counter
-            memset(command, 0, 11);
-            commandCounter = 0;
-        }
+        //clear command buffer and counter
+        memset(command, 0, 11);
+        commandCounter = 0;
     }
 }
