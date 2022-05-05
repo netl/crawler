@@ -27,7 +27,12 @@ char command[11];
 int commandCounter = 0;
 char knownVariables[][5] = {"dir", "spd"}; //list of known knownVariables
 
+//timer for stopping motors
+unsigned long nextStop = 0;
+
 void loop() {
+
+    unsigned long t = millis();
 
     //process commands from serial port
     while(Serial.available()){
@@ -60,6 +65,7 @@ void loop() {
                 break;
             case 1:
                 accelerator.write(parsedValue+90);
+                nextStop = t + 1000;
                 break;
         }
 
@@ -67,6 +73,10 @@ void loop() {
         memset(command, 0, 11);
         commandCounter = 0;
     }
+
+    //stop if motors have been running without updates
+    if(nextStop < t)
+        accelerator.write(90);
 
     //output all known variables
     Serial.print("dir ");
