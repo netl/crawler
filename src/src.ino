@@ -30,16 +30,16 @@ void loop() {
         command[commandCounter] = 0;
 
         //parse command and value
-        String parsedCommand = strtok(command, " ");
+        char *parsedCommand = strtok(command, " ");
         int parsedValue = atoi(strtok(NULL, " "));
 
         //echo processed command
         Serial.print(parsedCommand);
-        Serial.print(":");
+        Serial.print(" ");
         Serial.println(parsedValue);
 
         //just check for velocity and set it for now
-        if(parsedCommand == "spd")
+        if( strcmp( parsedCommand, "spd") == 0)
             accelerator.write(parsedValue);
 
         //clear command buffer and counter
