@@ -33,8 +33,8 @@ when external power is on.
 
 |variable| set |  scale  | description          |
 |--------|-----|---------|----------------------|
-| spd    | yes | PWM-125 | speed                |
-| dir    | yes | PWM-125 | direction            |
+| spd    | yes | +-90    | speed                |
+| dir    | yes | +-90    | direction            |
 | pOff   | yes | minutes | go to sleep timer    |
 | pOn    | yes | minutes | wake up timer        |
 | batV   | no  | mV      | battery voltage      |

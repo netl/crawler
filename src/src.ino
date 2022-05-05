@@ -3,6 +3,9 @@
 
 Servo accelerator;
 Servo steering;
+const int batIPin = A0;
+const int batVPin = A1;
+
 void setup() {
     Serial.begin(115200);
     while(!Serial);
@@ -12,6 +15,9 @@ void setup() {
     accelerator.write(90);
     steering.attach(2);
     steering.write(90);
+
+    pinMode(batIPin, INPUT);
+    pinMode(batVPin, INPUT);
 
     Serial.println("ready");
 }
@@ -40,11 +46,6 @@ void loop() {
         char *parsedCommand = strtok(command, " ");
         int parsedValue = atoi(strtok(NULL, " "));
 
-        //echo processed command
-        Serial.print(parsedCommand);
-        Serial.print(" ");
-        Serial.println(parsedValue);
-
         //compare command to known variables
         int n;
         for( n = 0; n < 2; n++)
@@ -55,10 +56,10 @@ void loop() {
         //set matching variable
         switch (n){
             case 0:
-                steering.write(parsedValue);
+                steering.write(parsedValue+90);
                 break;
             case 1:
-                accelerator.write(parsedValue);
+                accelerator.write(parsedValue+90);
                 break;
         }
 
@@ -66,4 +67,18 @@ void loop() {
         memset(command, 0, 11);
         commandCounter = 0;
     }
+
+    //output all known variables
+    Serial.print("dir ");
+    Serial.println(steering.read()-90, DEC);
+
+    Serial.print("spd ");
+    Serial.println(accelerator.read()-90, DEC);
+
+    Serial.print("batI ");
+    Serial.println(analogRead(batIPin), DEC);
+
+    Serial.print("batV ");
+    Serial.println(analogRead(batVPin), DEC);
+
 }
