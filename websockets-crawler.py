@@ -21,13 +21,11 @@ def on_message(client, server, message):
     if message in commands:
         cr.write(commands[message].encode())
 
-clients = []
-
 def new_client(client, server):
-    clients.append(client)
+    print(f"new client: {client}")
 
 def client_disconnect(client, server):
-    clients.pop(client)
+    print(f"client dropped: {client}")
 
 ws.set_fn_message_received(on_message)
 ws.set_fn_new_client(new_client)
@@ -38,5 +36,6 @@ t.start()
 print("ready")
 while True:
     crMessage = cr.read(1024)
-    for client in clients:
-        ws.send_message(client, crMessage)
+    if crMessage:
+        for client in ws.clients:
+            ws.send_message(client, crMessage)
