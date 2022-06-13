@@ -33,9 +33,12 @@ ws.set_fn_client_left(client_disconnect)
 t = Thread(group=None, target=ws.run_forever)
 t.start()
 
+crMessage = b""
 print("ready")
 while True:
-    crMessage = cr.read(1024)
+    crMessage += cr.read(1024)
     if crMessage:
-        for client in ws.clients:
-            ws.send_message(client, crMessage)
+        packets = crMessage.split(b'\r\n')[:-1]
+        crMessage = crMessage.split(b'\r\n')[-1]
+        for packet in packets:
+            ws.send_message_to_all(packet.decode("utf-8"))

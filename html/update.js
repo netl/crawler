@@ -1,5 +1,15 @@
 var websocket = new WebSocket('ws://'+window.location.hostname+':9999');
 
+websocket.onmessage = function(message){
+    console.log(message);
+    if (message.data.includes("batV")) {
+        document.getElementById("batV").innerHTML = message.data;
+    }
+    if (message.data.includes("batI")) {
+        document.getElementById("batI").innerHTML = message.data;
+    }
+};
+
 const forward = document.getElementById("forward")
 const reverse = document.getElementById("reverse")
 const left = document.getElementById("left")

@@ -30,6 +30,8 @@ char knownVariables[][5] = {"dir", "spd"}; //list of known knownVariables
 //timer for stopping motors
 unsigned long nextStop = 0;
 
+unsigned long nextUpdate = 0;
+
 void loop() {
 
     unsigned long t = millis();
@@ -78,17 +80,20 @@ void loop() {
     if(nextStop < t)
         accelerator.write(90);
 
-    //output all known variables
-    Serial.print("dir ");
-    Serial.println(steering.read()-90, DEC);
+    //output all known variables periodically
+    if(nextUpdate < t){
+        Serial.print("dir ");
+        Serial.println(steering.read()-90, DEC);
 
-    Serial.print("spd ");
-    Serial.println(accelerator.read()-90, DEC);
+        Serial.print("spd ");
+        Serial.println(accelerator.read()-90, DEC);
 
-    Serial.print("batI ");
-    Serial.println(analogRead(batIPin), DEC);
+        Serial.print("batI ");
+        Serial.println((analogRead(batIPin)-60)*202/(88-60), DEC);
 
-    Serial.print("batV ");
-    Serial.println(analogRead(batVPin), DEC);
+        Serial.print("batV ");
+        Serial.println(float(analogRead(batVPin))*8.35/853., 2);
+        nextUpdate = t + 300;
+    }
 
 }
