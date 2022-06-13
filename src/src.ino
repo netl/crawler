@@ -65,7 +65,7 @@ void loop() {
                 break;
             case 1:
                 accelerator.write(parsedValue+90);
-                nextStop = t + 1000;
+                nextStop = t + 300;
                 break;
         }
 

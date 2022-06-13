@@ -11,12 +11,12 @@ ws = WebsocketServer(host="0.0.0.0", port=9999)
 def on_message(client, server, message):
     print(f"{client}:{message}")
     commands = {
-        "forward":"dir 0\nspd 30\n",
-        "left":"dir 30\nspd 30\n",
-        "right":"dir -30\nspd 30\n",
-        "reverse":"spd -30\n",
-        "rleft":"dir 30\nspd -30\n",
-        "rright":"dir -30\nspd -30\n",
+        "forward":"\rdir 0\rspd 30\r",
+        "left":"\rdir 30\rspd 30\r",
+        "right":"\rdir -30\rspd 30\r",
+        "reverse":"\rdir 0\rspd -30\r",
+        "rleft":"\rdir 30\rspd -30\r",
+        "rright":"\rdir -30\rspd -30\r",
     }
     if message in commands:
         cr.write(commands[message].encode())

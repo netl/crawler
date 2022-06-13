@@ -4,6 +4,8 @@ const forward = document.getElementById("forward")
 const reverse = document.getElementById("reverse")
 const left = document.getElementById("left")
 const right = document.getElementById("right")
+const rleft = document.getElementById("rleft")
+const rright = document.getElementById("rright")
 let timer;
 
 forward.onpointerdown = function(){
