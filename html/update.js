@@ -19,6 +19,7 @@ const rright = document.getElementById("rright")
 let timer;
 
 forward.onpointerdown = function(){
+    clearInterval(timer)
     timer = setInterval(function(){websocket.send("forward")}, 100);
 }
 
@@ -27,6 +28,7 @@ forward.onpointerup = function(){
 }
 
 reverse.onpointerdown = function(){
+    clearInterval(timer)
     timer = setInterval(function(){websocket.send("reverse")}, 100);
 }
 
@@ -35,6 +37,7 @@ reverse.onpointerup = function(){
 }
 
 left.onpointerdown = function(){
+    clearInterval(timer)
     timer = setInterval(function(){websocket.send("left")}, 100);
 }
 
@@ -43,6 +46,7 @@ left.onpointerup = function(){
 }
 
 right.onpointerdown = function(){
+    clearInterval(timer)
     timer = setInterval(function(){websocket.send("right")}, 100);
 }
 
@@ -51,6 +55,7 @@ right.onpointerup = function(){
 }
 
 rleft.onpointerdown = function(){
+    clearInterval(timer)
     timer = setInterval(function(){websocket.send("rleft")}, 100);
 }
 
@@ -59,6 +64,7 @@ rleft.onpointerup = function(){
 }
 
 rright.onpointerdown = function(){
+    clearInterval(timer)
     timer = setInterval(function(){websocket.send("rright")}, 100);
 }
 
