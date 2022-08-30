@@ -16,7 +16,13 @@ const left = document.getElementById("left")
 const right = document.getElementById("right")
 const rleft = document.getElementById("rleft")
 const rright = document.getElementById("rright")
+const camera = document.getElementById("camera")
 let timer;
+
+camera.onclick = function(){
+    websocket.send("pitch "+document.getElementById("pitch").value)
+    websocket.send("yaw "+document.getElementById("yaw").value)
+}
 
 forward.onpointerdown = function(){
     clearInterval(timer)

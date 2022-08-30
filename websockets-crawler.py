@@ -10,6 +10,7 @@ ws = WebsocketServer(host="0.0.0.0", port=9999)
 
 def on_message(client, server, message):
     print(f"{client}:{message}")
+    #TODO verify the message is something we're expecting
     commands = {
         "forward":"\rdir 0\rspd 30\r",
         "left":"\rdir 30\rspd 30\r",
@@ -17,9 +18,12 @@ def on_message(client, server, message):
         "reverse":"\rdir 0\rspd -30\r",
         "rleft":"\rdir 30\rspd -30\r",
         "rright":"\rdir -30\rspd -30\r",
+        "pitch":f"\r{message}\r",
+        "yaw":f"\r{message}\r",
     }
-    if message in commands:
-        cr.write(commands[message].encode())
+    m = message.split()[0]
+    if m in commands:
+        cr.write(commands[m].encode())
 
 def new_client(client, server):
     print(f"new client: {client}")

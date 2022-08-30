@@ -14,6 +14,8 @@ Below are listed all the signals that are needed for proper operation
 |----|---|---|-----------------|
 | 2  | O | D | direction       |
 | 3  | O | D | speed           |
+| 4  | O | D | camera pitch    |
+| 5  | O | D | camera yaw      |
 | A0 | I | A | battery current |
 | A1 | I | A | battery voltage |
 |    | I | D | battery charging|
@@ -35,6 +37,8 @@ when external power is on.
 |--------|-----|---------|----------------------|
 | spd    | yes | +-90    | speed                |
 | dir    | yes | +-90    | direction            |
+| pitch  | yes | +-90    | camera pitch         |
+| yaw    | yes | +-90    | camera yaw           |
 | pOff   | yes | minutes | go to sleep timer    |
 | pOn    | yes | minutes | wake up timer        |
 | batV   | no  | mV      | battery voltage      |
