@@ -40,7 +40,7 @@ t.start()
 crMessage = b""
 print("ready")
 while True:
-    crMessage += cr.read(1024)
+    crMessage += cr.read(cr.in_waiting)
     if crMessage:
         packets = crMessage.split(b'\r\n')[:-1]
         crMessage = crMessage.split(b'\r\n')[-1]

@@ -21,14 +21,17 @@ c.on_message = on_message
 
 #main 
 print("ready")
+crMessage = b''
 while True:
 
     #check for data on serial port
-    crMessage = cr.read(1024)
+    crMessage += cr.read(cr.in_waiting)
     if crMessage:
+        packets = crMessage.split(b'\r\n')[:-1]
+        crMessage = crMessage.split(b'\r\n')[-1]
         try:
-            for line in crMessage.decode('utf-8').split('\n'):
-                tm = line.split(' ')
+            for line in packets:
+                tm = line.decode('utf-8').split(' ')
                 c.publish(f"/crawler/status/{tm[0]}", tm[1])
         except IndexError:
             pass
