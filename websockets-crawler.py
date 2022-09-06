@@ -1,29 +1,47 @@
 #!/usr/bin/env python3
-import serial
+from crawler import crawler
 from websocket_server import WebsocketServer
 import time
 from threading import Thread
+import json
 
-cr = serial.Serial('/dev/ttyACM0', 115200)
+#crawler
+cr = crawler('/dev/ttyACM0')
 
+def newData(data):
+    for topic, value in data.items():
+        ws.send_message_to_all(json.dumps(data))
+cr.addHook(newData)
+
+#websockets
 ws = WebsocketServer(host="0.0.0.0", port=9999)
 
 def on_message(client, server, message):
     print(f"{client}:{message}")
-    #TODO verify the message is something we're expecting
     commands = {
-        "forward":"\rdir 0\rspd 30\r",
-        "left":"\rdir 30\rspd 30\r",
-        "right":"\rdir -30\rspd 30\r",
-        "reverse":"\rdir 0\rspd -30\r",
-        "rleft":"\rdir 30\rspd -30\r",
-        "rright":"\rdir -30\rspd -30\r",
-        "pitch":f"\r{message}\r",
-        "yaw":f"\r{message}\r",
+        "forward":{"dir":0,"spd":30},
+        "left":{"dir":30,"spd":30},
+        "right":{"dir":-30,"spd":30},
+        "reverse":{"dir":0,"spd":-30},
+        "rleft":{"dir":30,"spd":-30},
+        "rright":{"dir":-30,"spd":-30},
     }
-    m = message.split()[0]
-    if m in commands:
-        cr.write(commands[m].encode())
+    #TODO verify the message is something we're expecting
+    try:
+        variable, value = message.split(" ")
+        commands.update({
+            "pitch":{variable:value},
+            "yaw":{variable:value}
+            })
+    except ValueError:
+        #most likely got a direction command instead of pitch/yaw
+        if message in commands:
+            variable = message
+        else:
+            print(message)
+            raise
+
+    cr.set(commands[variable])
 
 def new_client(client, server):
     print(f"new client: {client}")
@@ -37,12 +55,16 @@ ws.set_fn_client_left(client_disconnect)
 t = Thread(group=None, target=ws.run_forever)
 t.start()
 
-crMessage = b""
 print("ready")
 while True:
-    crMessage += cr.read(cr.in_waiting)
-    if crMessage:
-        packets = crMessage.split(b'\r\n')[:-1]
-        crMessage = crMessage.split(b'\r\n')[-1]
-        for packet in packets:
-            ws.send_message_to_all(packet.decode("utf-8"))
+    try:
+        time.sleep(1)
+        print(cr.status)
+    except KeyboardInterrupt:
+        break
+
+#stop threads
+print("stopping!")
+ws.shutdown_gracefully()
+t.join()
+cr.stop()

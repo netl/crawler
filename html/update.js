@@ -2,11 +2,12 @@ var websocket = new WebSocket('ws://'+window.location.hostname+':9999');
 
 websocket.onmessage = function(message){
     console.log(message);
-    if (message.data.includes("batV")) {
-        document.getElementById("batV").innerHTML = message.data;
-    }
-    if (message.data.includes("batI")) {
-        document.getElementById("batI").innerHTML = message.data;
+    const data = JSON.parse(message.data)
+    for (let key in data){
+        try{
+            document.getElementById(key).innerHTML = key+" "+data[key];
+        }
+        catch (TypeError) {}
     }
 };
 

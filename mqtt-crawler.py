@@ -1,40 +1,42 @@
 #!/usr/bin/env python3
 import paho.mqtt.client as mqtt
-import serial
+from crawler import crawler
 import time
 
-#serial port
-cr = serial.Serial('/dev/ttyACM0', 115200)
+#crawler
+cr = crawler('/dev/ttyACM0')
+
+def newData(data):
+    for topic, value in data.items():
+        c.publish(f"/crawler/status/{topic}", value)
+cr.addHook(newData)
 
 #mqtt client
 c = mqtt.Client()
 c.connect('raptor.local')
 c.publish("/crawler/status", "hello")
 c.subscribe("/crawler/command/#")
+
 def on_message(client, userdata, message):
     topic = message.topic.split('/')[-1]
     value = message.payload.decode('utf-8')
-    output = f"{topic} {value}\r"
+    output = {topic:value}
     print(output)
-    cr.write(output.encode())
+    cr.set(output)
 c.on_message = on_message
+
+c.loop_start()
 
 #main 
 print("ready")
-crMessage = b''
 while True:
+    try:
+        time.sleep(1)
+        print(cr.status)
+    except KeyboardInterrupt:
+        break
 
-    #check for data on serial port
-    crMessage += cr.read(cr.in_waiting)
-    if crMessage:
-        packets = crMessage.split(b'\r\n')[:-1]
-        crMessage = crMessage.split(b'\r\n')[-1]
-        try:
-            for line in packets:
-                tm = line.decode('utf-8').split(' ')
-                c.publish(f"/crawler/status/{tm[0]}", tm[1])
-        except IndexError:
-            pass
-
-    #check mqtt messages
-    c.loop_read()
+#stop threads
+print("stopping!")
+cr.stop()
+c.loop_stop()
