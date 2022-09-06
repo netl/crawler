@@ -109,7 +109,7 @@ void loop() {
         Serial.println(yaw.read()-90, DEC);
 
         Serial.print("batI ");
-        Serial.println((analogRead(batIPin)-60)*202/(88-60), DEC);
+        Serial.println(( (uint16_t) analogRead(batIPin)-60)*202/(88-60), DEC);
 
         Serial.print("batV ");
         Serial.println(float(analogRead(batVPin))*8.35/853., 2);
