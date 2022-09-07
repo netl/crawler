@@ -2,8 +2,8 @@ import serial
 from threading import Thread
 
 class crawler():
-    def __init__( self , port):
-        self.serial = serial.Serial(port)
+    def __init__( self , config):
+        self.serial = serial.Serial( config.get( "serial", "port"), config.getint( "serial", "baudRate"))
         self.serialBuffer = b''
         self.status = {}
         self.hooks = [] #list of hooks to call when new data is available
@@ -64,7 +64,13 @@ class crawler():
 
 if __name__ == "__main__":
     from time import sleep
-    c = crawler('/dev/ttyACM0')
+    from configparser import ConfigParser
+
+    configString = "[serial]\nport=/dev/ttyACM0\nbaudRate=115200"
+    config = ConfigParser()
+    config.read_string( configString)
+    c = crawler( config)
+
     sleep(1)
     print(c.status)
     c.serialMonitor()

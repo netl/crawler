@@ -6,6 +6,11 @@
 * Use simple interfaces in order to provide good upgradeability  
 
 
+# Software  
+
+Copy example-crawler.conf to crawler.conf  
+
+
 # Electrical signals  
 
 Below are listed all the signals that are needed for proper operation  

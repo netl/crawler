@@ -6,3 +6,6 @@ pcb/crawler-backups
 #dotfiles
 .*
 !.gitignore
+
+#user configuration
+crawler.conf

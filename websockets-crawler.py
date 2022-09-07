@@ -4,9 +4,15 @@ from websocket_server import WebsocketServer
 import time
 from threading import Thread
 import json
+from configparser import ConfigParser
+
+#configuration
+config = ConfigParser()
+with open("crawler.conf",'r') as f:
+    config.read_file(f)
 
 #crawler
-cr = crawler('/dev/ttyACM0')
+cr = crawler( config )
 
 def newData(data):
     for topic, value in data.items():
@@ -14,7 +20,7 @@ def newData(data):
 cr.addHook(newData)
 
 #websockets
-ws = WebsocketServer(host="0.0.0.0", port=9999)
+ws = WebsocketServer( host = config.get( "websockets", "host"), port = config.getint( "websockets", "port"))
 
 def on_message(client, server, message):
     print(f"{client}:{message}")
