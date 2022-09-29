@@ -29,13 +29,20 @@ def newData(data):
 cr.addHook(newData)
 
 #mqtt client
-try:
-    c = mqtt.Client()
-    c.connect( config.get( "mqtt", "host"), config.getint( "mqtt", "port"))
-    c.subscribe( config.get( "mqtt", "listenTopic") + "/#")
-except Exception as E:
-    logging.exception(f"exception while setting up mqtt\n{E}")
-    quit()
+while True:
+    from socket import gaierror
+    try:
+        c = mqtt.Client()
+        c.connect( config.get( "mqtt", "host"), config.getint( "mqtt", "port"))
+        c.subscribe( config.get( "mqtt", "listenTopic") + "/#")
+        break
+    except gaierror as E:
+        logging.warning(f"mqtt: {E}")
+        time.sleep(1)
+        continue
+    except Exception as E:
+        logging.exception(f"exception while setting up mqtt\n{E}")
+        quit()
 
 def on_message(client, userdata, message):
     topic = message.topic.split('/')[-1]
