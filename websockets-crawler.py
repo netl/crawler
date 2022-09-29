@@ -65,7 +65,6 @@ print("ready")
 while True:
     try:
         time.sleep(1)
-        print(cr.status)
     except KeyboardInterrupt:
         break
 
