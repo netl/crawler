@@ -9,7 +9,7 @@
 # Software  
 
 Copy example-crawler.conf to crawler.conf  
-
+./mqtt-crawler.py crawler.conf  
 
 # Electrical signals  
 

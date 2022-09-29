@@ -1,5 +1,6 @@
 import serial
 from threading import Thread
+import logging
 
 class crawler():
     def __init__( self , config):
@@ -19,8 +20,7 @@ class crawler():
             try:
                 self.serialBuffer += self.serial.read(max(1,self.serial.in_waiting))
             except serial.serialutil.SerialException as E:
-                #spamming too much?
-                print(E)
+                logging.error(E)
                 continue
 
             if self.serialBuffer:
@@ -65,6 +65,7 @@ class crawler():
 if __name__ == "__main__":
     from time import sleep
     from configparser import ConfigParser
+    logging.basicConfig( level=logging.DEBUG)
 
     configString = "[serial]\nport=/dev/ttyACM0\nbaudRate=115200"
     config = ConfigParser()

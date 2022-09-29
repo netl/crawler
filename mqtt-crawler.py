@@ -4,17 +4,22 @@ from crawler import crawler
 import time
 from configparser import ConfigParser
 import logging
+from sys import argv
 
 #configuration
 config = ConfigParser()
-with open("crawler.conf",'r') as f:
+with open(argv[1],'r') as f:
     config.read_file(f)
 
 #logging
-logging.basicConfig( level=logging.INFO)
+logging.basicConfig( filename = config.get( "log", "logfile"), level=logging.INFO)
 
 #crawler
-cr = crawler(config)
+try:
+    cr = crawler(config)
+except Exception as E:
+    logging.exception(f"exception while setting up crawler\n{E}")
+    quit()
 
 publishTopic = config.get( "mqtt", "publishTopic")
 def newData(data):
@@ -24,9 +29,13 @@ def newData(data):
 cr.addHook(newData)
 
 #mqtt client
-c = mqtt.Client()
-c.connect( config.get( "mqtt", "host"), config.getint( "mqtt", "port"))
-c.subscribe( config.get( "mqtt", "listenTopic") + "/#")
+try:
+    c = mqtt.Client()
+    c.connect( config.get( "mqtt", "host"), config.getint( "mqtt", "port"))
+    c.subscribe( config.get( "mqtt", "listenTopic") + "/#")
+except Exception as E:
+    logging.exception(f"exception while setting up mqtt\n{E}")
+    quit()
 
 def on_message(client, userdata, message):
     topic = message.topic.split('/')[-1]
