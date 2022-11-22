@@ -8,8 +8,11 @@
 
 # Software  
 
-Copy example-crawler.conf to crawler.conf  
+```
+pip3 install -r requirements.txt  
+cp example-crawler.conf crawler.conf  
 ./mqtt-crawler.py crawler.conf  
+```
 
 # Electrical signals  
 
