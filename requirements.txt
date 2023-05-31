@@ -1,2 +1,4 @@
 paho.mqtt
 pyserial
+websocket-server
+opencv-python-headless

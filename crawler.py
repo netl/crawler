@@ -6,7 +6,7 @@ class crawler():
     def __init__( self , config):
         self.serial = serial.Serial( config.get( "serial", "port"), config.getint( "serial", "baudRate"))
         self.serialBuffer = b''
-        self.status = {}
+        self.status = {"yaw":90,"pitch":90}
         self.hooks = [] #list of hooks to call when new data is available
 
         #thread seutp

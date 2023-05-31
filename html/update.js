@@ -5,7 +5,11 @@ websocket.onmessage = function(message){
     const data = JSON.parse(message.data)
     for (let key in data){
         try{
-            document.getElementById(key).innerHTML = key+" "+data[key];
+            if (key == "image"){
+                document.getElementById("view").src = "images/" + data[key] + ".jpg?" + Date.now();
+            } else {
+                document.getElementById(key).innerHTML = key+" "+data[key];
+            }
         }
         catch (TypeError) {}
     }
@@ -19,6 +23,13 @@ const rleft = document.getElementById("rleft")
 const rright = document.getElementById("rright")
 const camera = document.getElementById("camera")
 let timer;
+
+function sendpos(event){
+    img = document.getElementById("view");
+    let x = event.offsetX/img.clientWidth;
+    let y = event.offsetY/img.clientHeight;
+    websocket.send(JSON.stringify([x,1-y]))
+}
 
 camera.onclick = function(){
     websocket.send("pitch "+document.getElementById("pitch").value)
