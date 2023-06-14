@@ -10,15 +10,18 @@ from cv2 import VideoCapture ,imwrite, CAP_PROP_POS_FRAMES
 class Camera():
     def __init__(self, crawler, ws, config):
         self.cr = crawler
+        self.cr.addHook(self.update_status)
         self.config = config
         self.ws = ws
         #camera
         self.snap_dir = self.config.get("webcam", "directory")
-        self.cam_view = [85,85]
+        self.cam_view = [120,120]
 
     def snapshot(self, name=None):
         self.cam = VideoCapture(0)
         self.cam.set(CAP_PROP_POS_FRAMES, 0)
+        #self.cam.set(3, 2592)
+        #self.cam.set(4, 1944)
         s, img = self.cam.read()
         self.cam.release()
         if s:
@@ -33,21 +36,25 @@ class Camera():
                 self.ws.send_message_to_all(json.dumps({"image":str(name)}))
 
     def on_message(self, client, server, message):
-        print(message)
         #determine click location relative to current camera position
         #TODO: get position from a database based on image id
         x,y = json.loads(message)
-        x -= 0.5
-        y -= 0.5
-        new_x = max(-90, min( self.cr.status["yaw"]+self.cam_view[0]*x, 90))
-        new_y = max(-90, min( self.cr.status["pitch"]+self.cam_view[0]*y, 90))
+        x = 0.5-x
+        y = y-0.5
+        new_x = int(max(-90, min( self.cr.status["yaw"]+self.cam_view[0]*x, 90)))
+        new_y = int(max(-90, min( self.cr.status["pitch"]+self.cam_view[0]*y, 90)))
 
         #adjust camera
-        self.cr.set({"yaw":new_x,"pitch":new_y})
+        target = {"yaw":new_x,"pitch":new_y}
+        print(target)
+        self.cr.set(target)
         time.sleep(1) # wait for servos to turn
 
         #take picture
         self.snapshot("preview")
+
+    def update_status(self, data):
+        self.ws.send_message_to_all(json.dumps(data))
 
 if __name__ == "__main__":
     #configuration
