@@ -5,7 +5,7 @@ from threading import Timer ,Thread
 from websocket_server import WebsocketServer
 import time
 import json
-from cv2 import VideoCapture ,imwrite, CAP_PROP_POS_FRAMES
+import os
 
 class Camera():
     def __init__(self, crawler, ws, config):
@@ -18,22 +18,14 @@ class Camera():
         self.cam_view = [120,120]
 
     def snapshot(self, name=None):
-        self.cam = VideoCapture(0)
-        self.cam.set(CAP_PROP_POS_FRAMES, 0)
-        #self.cam.set(3, 2592)
-        #self.cam.set(4, 1944)
-        s, img = self.cam.read()
-        self.cam.release()
-        if s:
-            #use timestamp unless specified otherwise
-            if not name:
-                name = int(time.time())
+        resolution = "-video_size 2592x1944 "
+        if not name:
+            name = int(time.time())
+        elif name == "preview":
+            resolution = "-video_size 640x480"
 
-            #try to save image
-            if imwrite(f"{self.snap_dir}/{name}.jpg",img):
-
-                #send new timestamp
-                self.ws.send_message_to_all(json.dumps({"image":str(name)}))
+        os.system(f"ffmpeg -y -f video4linux2 {resolution} -i /dev/video0 -vframes 1 {self.snap_dir}/{name}.jpg")
+        self.ws.send_message_to_all(json.dumps({"image":str(name)}))
 
     def on_message(self, client, server, message):
         #determine click location relative to current camera position
