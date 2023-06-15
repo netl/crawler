@@ -1,49 +1,55 @@
 #!/usr/bin/env python3
 
-from crawler import crawler
-from threading import Timer ,Thread
+import paho.mqtt.client as mqtt
 from websocket_server import WebsocketServer
 import time
 import json
 import os
 
 class Camera():
-    def __init__(self, crawler, ws, config):
-        self.cr = crawler
-        self.cr.addHook(self.update_status)
-        self.config = config
+    def __init__(self, mq, ws, config):
+
+        #mqtt
+        self.mq = mq
+        self.mq.on_message = self.on_mq_message
+        self.crawlerTopic = config.get( "mqtt", "listenTopic")
+
+        #websocket
         self.ws = ws
+
         #camera
-        self.snap_dir = self.config.get("webcam", "directory")
+        self.snap_dir = config.get("webcam", "directory")
         self.cam_view = [120,120]
+        self.cam_status = {"pitch":0, "yaw":0}
 
-    def snapshot(self, name=None):
-        resolution = "-video_size 2592x1944 "
-        if not name:
-            name = int(time.time())
-        elif name == "preview":
-            resolution = "-video_size 640x480"
-
-        os.system(f"ffmpeg -y -f video4linux2 {resolution} -i /dev/video0 -vframes 1 {self.snap_dir}/{name}.jpg")
-        self.ws.send_message_to_all(json.dumps({"image":str(name)}))
-
-    def on_message(self, client, server, message):
+    def on_ws_message(self, client, server, message):
         #determine click location relative to current camera position
-        #TODO: get position from a database based on image id
         x,y = json.loads(message)
         x = 0.5-x
         y = y-0.5
-        new_x = int(max(-90, min( self.cr.status["yaw"]+self.cam_view[0]*x, 90)))
-        new_y = int(max(-90, min( self.cr.status["pitch"]+self.cam_view[0]*y, 90)))
+        new_x = int(max(-90, min( self.cam_status["yaw"]+self.cam_view[0]*x, 90)))
+        new_y = int(max(-90, min( self.cam_status["pitch"]+self.cam_view[1]*y, 90)))
 
-        #adjust camera
-        target = {"yaw":new_x,"pitch":new_y}
-        print(target)
-        self.cr.set(target)
-        time.sleep(1) # wait for servos to turn
+
+        #send new position over mqtt
+        print(f"aiming at {new_x}, {new_y}")
+        for key, value in {"yaw":new_x,"pitch":new_y}.items():
+            self.mq.publish(f"{self.crawlerTopic}/{key}", value)
+
+        # wait for servos to turn
+        time.sleep(1) 
 
         #take picture
-        self.snapshot("preview")
+        name = "preview"
+        os.system(f"ffmpeg -y -f video4linux2 -video_size 640x480 -i /dev/video0 -vframes 1 {self.snap_dir}/{name}.jpg")
+        self.ws.send_message_to_all(json.dumps({"image":str(name)}))
+
+    def on_mq_message(self, client, userdata, message):
+        topic = message.topic.split('/')[-1]
+        value = message.payload.decode('utf-8')
+        output = {topic:value}
+        self.cam_status.update(output)
+        self.update_status(output)
 
     def update_status(self, data):
         self.ws.send_message_to_all(json.dumps(data))
@@ -55,30 +61,22 @@ if __name__ == "__main__":
     with open("crawler.conf",'r') as f:
         config.read_file(f)
 
-    #crawler
-    cr = crawler(config)
+    #mqtt
+    mq = mqtt.Client()
+    mq.connect( config.get( "mqtt", "host"), config.getint( "mqtt", "port"))
+    mq.subscribe( config.get( "mqtt", "publishTopic") + "/#")
+    mq.loop_start()
 
     #websocket
     ws = WebsocketServer( host = config.get( "websockets", "host"), port = config.getint( "websockets", "port"))
 
     #camera
-    c = Camera(cr, ws, config)
+    c = Camera(mq, ws, config)
+    ws.set_fn_message_received(c.on_ws_message)
 
-    #websocket thread
-    ws.set_fn_message_received(c.on_message)
-    t = Thread(group=None, target=ws.run_forever)
-    t.start()
-
-    print("ready!")
-    #record timelapse
-    while True:
-        try:
-            time.sleep(60)
-            c.snapshot()
-        except KeyboardInterrupt:
-            break
+    #websocket main loop
+    ws.run_forever()
 
     #cleanup
     ws.shutdown_gracefully()
-    t.join()
-    cr.stop()
+    mq.loop_stop()
