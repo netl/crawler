@@ -27,8 +27,8 @@ class Camera():
         x,y = json.loads(message)
         x = 0.5-x
         y = y-0.5
-        new_x = int(max(-90, min( self.cam_status["yaw"]+self.cam_view[0]*x, 90)))
-        new_y = int(max(-90, min( self.cam_status["pitch"]+self.cam_view[1]*y, 90)))
+        new_x = int(max(-90, min( int(self.cam_status["yaw"])+self.cam_view[0]*x, 90)))
+        new_y = int(max(-90, min( int(self.cam_status["pitch"])+self.cam_view[1]*y, 90)))
 
 
         #send new position over mqtt

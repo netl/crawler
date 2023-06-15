@@ -36,7 +36,7 @@ class crawler():
                     for line in packets:
                         try:
                             var, value = line.decode('utf-8').split(' ')
-                            newData.update({var:int(value)})
+                            newData.update({var:value})
                         except ValueError:
                             #error in serial data
                             continue
