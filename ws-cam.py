@@ -57,8 +57,9 @@ class Camera():
 if __name__ == "__main__":
     #configuration
     from configparser import ConfigParser
+    from sys import argv
     config = ConfigParser()
-    with open("crawler.conf",'r') as f:
+    with open(argv[1],'r') as f:
         config.read_file(f)
 
     #mqtt
