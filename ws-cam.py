@@ -63,10 +63,19 @@ if __name__ == "__main__":
         config.read_file(f)
 
     #mqtt
-    mq = mqtt.Client()
-    mq.connect( config.get( "mqtt", "host"), config.getint( "mqtt", "port"))
-    mq.subscribe( config.get( "mqtt", "publishTopic") + "/#")
-    mq.loop_start()
+    while True:
+        from socket import gaierror
+        try:
+            mq = mqtt.Client()
+            mq.connect( config.get( "mqtt", "host"), config.getint( "mqtt", "port"))
+            mq.subscribe( config.get( "mqtt", "publishTopic") + "/#")
+            mq.loop_start()
+            break
+        except ( gaierror, OSError ) as E:
+            time.sleep(1)
+            continue
+        except Exception as E:
+            raise
 
     #websocket
     ws = WebsocketServer( host = config.get( "websockets", "host"), port = config.getint( "websockets", "port"))
