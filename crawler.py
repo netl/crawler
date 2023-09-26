@@ -1,18 +1,47 @@
 import serial
 from threading import Thread
 import logging
+import can
 
 class crawler():
     def __init__( self , config):
-        self.serial = serial.Serial( config.get( "serial", "port"), config.getint( "serial", "baudRate"))
-        self.serialBuffer = b''
         self.status = {"yaw":90,"pitch":90}
         self.hooks = [] #list of hooks to call when new data is available
 
+	#serial port
+        #self.serial = serial.Serial( config.get( "serial", "port"), config.getint( "serial", "baudRate"))
+        #self.serialBuffer = b''
+
+	#CANbu
+        self.bus = can.ThreadSafeBus(interface='socketcan', channel='can0', bitrate=500000)
+        self.incoming = {0x30:"a"}
+        self.outgoing = {"accelerator": 0, "steering": 1, "pitch":2, "yaw":3}
+
         #thread seutp
         self.run = True
-        self.mainThread = Thread(target=self.serialMonitor)
+        self.mainThread = Thread(target=self.CANMonitor)
         self.mainThread.start()
+
+    def CANMonitor(self):
+        while self.run:
+            msg = self.bus.recv()
+
+            if msg.arbitration_id not in self.incoming:
+                print(f"invalid arbitration 0x{msg.arbitration_id:02x}")
+                continue
+
+            newData = { self.incoming[msg.arbitration_id] : int(list(msg.data)[0]) }
+            self.syncStatus(newData)
+
+    def setCAN(self, values):
+        for key, value in values.items():
+            if key not in self.outgoing:
+                print(f"invalid key {key}")
+                continue
+
+            msg  = can.Message(value)
+            msg.arbitration_id = self.outgoing[key]
+            self.bus.send(msg)
 
     def serialMonitor(self):
         #if self.serial.in_waiting:

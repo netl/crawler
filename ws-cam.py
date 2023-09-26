@@ -5,6 +5,7 @@ from websocket_server import WebsocketServer
 import time
 import json
 import os
+import threading
 
 class Camera():
     def __init__(self, mq, ws, config):
@@ -13,6 +14,7 @@ class Camera():
         self.mq = mq
         self.mq.on_message = self.on_mq_message
         self.crawlerTopic = config.get( "mqtt", "listenTopic")
+        self.crawlerPubTopic = config.get( "mqtt", "publishTopic")
 
         #websocket
         self.ws = ws
@@ -22,6 +24,10 @@ class Camera():
         self.cam_view = [120,120]
         self.cam_status = {"pitch":0, "yaw":0}
 
+        #time lapse
+        self.run = True
+        self.timelapse()
+
     def on_ws_message(self, client, server, message):
         #determine click location relative to current camera position
         x,y = json.loads(message)
@@ -29,7 +35,6 @@ class Camera():
         y = y-0.5
         new_x = int(max(-90, min( int(self.cam_status["yaw"])+self.cam_view[0]*x, 90)))
         new_y = int(max(-90, min( int(self.cam_status["pitch"])+self.cam_view[1]*y, 90)))
-
 
         #send new position over mqtt
         print(f"aiming at {new_x}, {new_y}")
@@ -41,8 +46,7 @@ class Camera():
 
         #take picture
         name = "preview"
-        os.system(f"ffmpeg -y -f video4linux2 -video_size 640x480 -i /dev/video0 -vframes 1 {self.snap_dir}/{name}.jpg")
-        self.ws.send_message_to_all(json.dumps({"image":str(name)}))
+        self.take_picture("preview", "640x480")
 
     def on_mq_message(self, client, userdata, message):
         topic = message.topic.split('/')[-1]
@@ -53,6 +57,19 @@ class Camera():
 
     def update_status(self, data):
         self.ws.send_message_to_all(json.dumps(data))
+
+    def take_picture(self, name=None, videoSize = "2592x1944"):
+        if not name:
+            name = int(time.time())
+
+        os.system(f"ffmpeg -y -f video4linux2 -video_size {videoSize} -i /dev/video0 -vframes 1 {self.snap_dir}/{name}.jpg")
+        self.mq.publish(f"{self.crawlerPubTopic}/image", name)
+        self.ws.send_message_to_all(json.dumps({"image":str(name)}))
+
+    def timelapse(self, period = 60):
+        self.take_picture()
+        if self.run:
+            t = threading.Timer(period, self.timelapse, args=(period,)).start()
 
 if __name__ == "__main__":
     #configuration
@@ -67,12 +84,15 @@ if __name__ == "__main__":
         from socket import gaierror
         try:
             mq = mqtt.Client()
+            mq.tls_set(tls_version=mqtt.ssl.PROTOCOL_TLS)
+            mq.username_pw_set(config.get( "mqtt", "username"), config.get( "mqtt", "userpass"))
             mq.connect( config.get( "mqtt", "host"), config.getint( "mqtt", "port"))
             mq.subscribe( config.get( "mqtt", "publishTopic") + "/#")
             mq.loop_start()
             break
         except ( gaierror, OSError ) as E:
             time.sleep(1)
+            print(E)
             continue
         except Exception as E:
             raise
@@ -88,5 +108,6 @@ if __name__ == "__main__":
     ws.run_forever()
 
     #cleanup
+    c.run = False
     ws.shutdown_gracefully()
     mq.loop_stop()
