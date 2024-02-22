@@ -1,105 +1,120 @@
-import serial
-from threading import Thread
+#!/usr/bin/python3
+import paho.mqtt.client as mqtt
+import time
 import logging
+from configparser import ConfigParser
+from sys import argv
 import can
 
-class crawler():
-    def __init__( self , config):
-        self.status = {"yaw":90,"pitch":90}
-        self.hooks = [] #list of hooks to call when new data is available
+mapping = {
+    0x010 + 8 + 0 :{ "topic"      :"battery/voltage", "scalar":20/4096, "offset":0   },
+    0x010 + 8 + 1 :{ "topic"      :"battery/current", "scalar":40/4096, "offset":-10 },
+    "velocity"    :{ "arbitration":0x010 + 0        , "scalar":1000   , "offset":1000},
+    "steering"    :{ "arbitration":0x010 + 1        , "scalar":1000   , "offset":1000},
+    "camera/pitch":{ "arbitration":0x010 + 2        , "scalar":1000   , "offset":1000},
+    "camera/yaw"  :{ "arbitration":0x010 + 3        , "scalar":1000   , "offset":1000},
+}
 
-	#serial port
-        #self.serial = serial.Serial( config.get( "serial", "port"), config.getint( "serial", "baudRate"))
-        #self.serialBuffer = b''
+status = {}
 
-	#CANbu
-        self.bus = can.ThreadSafeBus(interface='socketcan', channel='can0', bitrate=500000)
-        self.incoming = {0x30:"a"}
-        self.outgoing = {"accelerator": 0, "steering": 1, "pitch":2, "yaw":3}
+#configuration
+config = ConfigParser()
+with open(argv[1],'r') as f:
+    config.read_file(f)
 
-        #thread seutp
-        self.run = True
-        self.mainThread = Thread(target=self.CANMonitor)
-        self.mainThread.start()
+#logging
+logging.basicConfig(level=logging.INFO)
 
-    def CANMonitor(self):
-        while self.run:
-            msg = self.bus.recv()
+#canbus
+bus = can.ThreadSafeBus(interface='socketcan', channel='can0', bitrate=500000)
 
-            if msg.arbitration_id not in self.incoming:
-                print(f"invalid arbitration 0x{msg.arbitration_id:02x}")
-                continue
+#mqtt client
+mq = mqtt.Client()
+baseTopic = config.get( "mqtt", "baseTopic")
+while True:
+    from socket import gaierror
+    try:
+        print("connecting")
+        mq.tls_set(tls_version=mqtt.ssl.PROTOCOL_TLS)
+        mq.username_pw_set(config.get( "mqtt", "username"), config.get( "mqtt", "userpass"))
+        mq.connect( config.get( "mqtt", "host"), config.getint( "mqtt", "port"))
+        mq.subscribe( baseTopic + "#")
+        print("connected")
+        break
+    except gaierror as E:
+        logging.warning(f"mqtt: {E}")
+        time.sleep(1)
+        continue
+    except Exception as E:
+        logging.exception(f"exception while setting up mqtt\n{E}")
+        quit()
 
-            newData = { self.incoming[msg.arbitration_id] : int(list(msg.data)[0]) }
-            self.syncStatus(newData)
+#generic scaling routine
+def scale(value, o):
+    scalar = o["scalar"]
+    offset = o["offset"]
+    return value * scalar + offset
 
-    def setCAN(self, values):
-        for key, value in values.items():
-            if key not in self.outgoing:
-                print(f"invalid key {key}")
-                continue
+#process incoming MQTT data
+def MQTTReceive(client, userdata, message):
+    topic = message.topic[len(baseTopic):]
+    value = float(message.payload.decode('utf-8'))
+    logging.debug(f"{topic}:{value}")
+    if topic in mapping:
+        CANSend(topic, value)
+mq.on_message = MQTTReceive
 
-            msg  = can.Message(value)
-            msg.arbitration_id = self.outgoing[key]
-            self.bus.send(msg)
+#canbus -> mqtt
+def MQTTSend(arbitration, value):
+    try:
+        #calculate
+        result = scale(value, mapping[arbitration])
+    
+        #send
+        topic = mapping[arbitration]["topic"]
+        logging.info(f"{arbitration:03X}->{topic}:{result}") 
+        mq.publish(baseTopic+topic, result)
+    
+        #sync
+        status.update({topic:result})
 
-    def serialMonitor(self):
-        #if self.serial.in_waiting:
-        while self.run:
-            try:
-                self.serialBuffer += self.serial.read(max(1,self.serial.in_waiting))
-            except serial.serialutil.SerialException as E:
-                logging.error(E)
-                continue
+    except KeyError:
+        logging.warning(f"invalid arbitration: {arbitration:03X}")
+    
+    except Exception as e:
+        logging.error(e)
 
-            if self.serialBuffer:
-                #separate completed rows
-                packets = self.serialBuffer.split(b'\r\n')[:-1]
-                self.serialBuffer = self.serialBuffer.split(b'\r\n')[-1]
+#mqtt -> canbus
+def CANSend(topic, value):
+    try:
+        #calculate
+        result = int(scale(value, mapping[topic]))
+    
+        #send
+        arbitration = mapping[topic]["arbitration"]
+        msg = can.Message(result, is_extended_id=False)
+        msg.arbitration_id = arbitration
+        logging.info(f"{topic}->{arbitration:03X}:{result:04X}")
+        bus.send(msg)
+    
+        #sync
+        status.update({topic:result})
 
-                #check for completed rows
-                if packets:
+    except KeyError:
+        logging.warning(f"invalid topic: {topic}")
+    
+    except Exception as e:
+        logging.error(e)
 
-                    #update completed rows
-                    newData = {}
-                    for line in packets:
-                        try:
-                            var, value = line.decode('utf-8').split(' ')
-                            newData.update({var:value})
-                        except ValueError:
-                            #error in serial data
-                            continue
+#start receiving over mqtt
+mq.loop_start()
 
-                    #update everyone interested
-                    self.syncStatus(newData)
+#monitor canbus and send everything over MQTT
+while True:
+    msg = bus.recv()
+    logging.debug(f"{msg.arbitration_id}:{msg.data}")
 
-    def syncStatus(self, newData):
-        self.status.update(newData)
-        for hook in self.hooks:
-            hook(newData)
+    # parse bytes to a single value TODO: make this cleaner
+    value = msg.data[1]*pow(2,8) + msg.data[0]
 
-    def addHook(self, hook):
-        self.hooks.append(hook)
-
-    def stop(self):
-        self.run = False
-        self.mainThread.join()
-
-    def set(self, values):
-        for key, value in values.items():
-            if key in self.status:
-                self.serial.write(f"\r{key} {value}\r".encode())
-        self.serial.flush()
-
-if __name__ == "__main__":
-    from time import sleep
-    from configparser import ConfigParser
-    logging.basicConfig( level=logging.DEBUG)
-
-    configString = "[serial]\nport=/dev/ttyACM0\nbaudRate=115200"
-    config = ConfigParser()
-    config.read_string( configString)
-    c = crawler( config)
-
-    sleep(1)
-    print(c.status)
+    MQTTSend(msg.arbitration_id, value)

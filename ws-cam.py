@@ -23,6 +23,7 @@ class Camera():
         self.snap_dir = config.get("webcam", "directory")
         self.cam_view = [120,120]
         self.cam_status = {"pitch":0, "yaw":0}
+        self.newest_image = None
 
         #time lapse
         self.run = True
@@ -48,9 +49,16 @@ class Camera():
         name = "preview"
         self.take_picture("preview", "640x480")
 
+    def on_ws_client(self, client):
+        self.ws.send_message(client, json.dumps({"image":self.newest_image}))
+
     def on_mq_message(self, client, userdata, message):
         topic = message.topic.split('/')[-1]
         value = message.payload.decode('utf-8')
+
+        if topic == "image":
+            self.newest_image = value
+
         output = {topic:value}
         self.cam_status.update(output)
         self.update_status(output)
@@ -62,7 +70,8 @@ class Camera():
         if not name:
             name = int(time.time())
 
-        os.system(f"ffmpeg -y -f video4linux2 -video_size {videoSize} -i /dev/video0 -vframes 1 {self.snap_dir}/{name}.jpg")
+        os.system(f"curl localhost:8080/snapshot > {self.snap_dir}/{name}.jpg")
+        #os.system(f"ffmpeg -y -f video4linux2 -video_size {videoSize} -i /dev/video0 -vframes 1 {self.snap_dir}/{name}.jpg")
         self.mq.publish(f"{self.crawlerPubTopic}/image", name)
         self.ws.send_message_to_all(json.dumps({"image":str(name)}))
 
@@ -103,6 +112,7 @@ if __name__ == "__main__":
     #camera
     c = Camera(mq, ws, config)
     ws.set_fn_message_received(c.on_ws_message)
+    #ws.set_fn_new_client(c.on_ws_client)
 
     #websocket main loop
     ws.run_forever()
