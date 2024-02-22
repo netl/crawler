@@ -1,3 +1,0 @@
-  * *  *   *   *     /media/storage/crawler/image.sh
-@reboot /media/storage/crawler/mqtt-crawler.py /media/storage/crawler/crawler.conf > /media/storage/log-crawler 2>&1
-@reboot /media/storage/crawler/ws-cam.py /media/storage/crawler/crawler.conf > /media/storage/log-cam 2>&1
