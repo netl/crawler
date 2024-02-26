@@ -15,8 +15,6 @@ mapping = {
     "camera/yaw"  :{ "arbitration":0x010 + 3        , "scalar":1000   , "offset":1000},
 }
 
-status = {}
-
 #configuration
 config = ConfigParser()
 with open(argv[1],'r') as f:
@@ -74,9 +72,6 @@ def MQTTSend(arbitration, value):
         topic = mapping[arbitration]["topic"]
         logging.info(f"{arbitration:03X}->{topic}:{result}") 
         mq.publish(baseTopic+topic, result)
-    
-        #sync
-        status.update({topic:result})
 
     except KeyError:
         logging.warning(f"invalid arbitration: {arbitration:03X}")
@@ -89,16 +84,15 @@ def CANSend(topic, value):
     try:
         #calculate
         result = int(scale(value, mapping[topic]))
-    
+
         #send
         arbitration = mapping[topic]["arbitration"]
-        msg = can.Message(result, is_extended_id=False)
+        msg = can.Message(is_extended_id=False)
+        msg.data = result.to_bytes(2,"big")
         msg.arbitration_id = arbitration
+        msg.dlc = 2
         logging.info(f"{topic}->{arbitration:03X}:{result:04X}")
         bus.send(msg)
-    
-        #sync
-        status.update({topic:result})
 
     except KeyError:
         logging.warning(f"invalid topic: {topic}")
